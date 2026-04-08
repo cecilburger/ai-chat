@@ -12,6 +12,7 @@ load_dotenv()
 app = Flask(__name__)
 groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 eleven_client = ElevenLabs(api_key=os.environ.get("ELEVENLABS_API_KEY"))
+comment_queue = []  # shared queue for TikTok Live comments
 
 ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "EXAVITQu4vr4xnSDxMaL")
 
@@ -90,6 +91,37 @@ def chat():
         mimetype="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@app.route("/live_comment", methods=["POST"])
+def live_comment():
+    """Receives comments from TikTok Live connector and pushes to frontend via SSE."""
+    data = request.get_json()
+    username = data.get("username", "Kak")
+    text = data.get("text", "").strip()
+    if not text:
+        return "", 400
+    comment_queue.append({"username": username, "text": text})
+    return "", 200
+
+
+@app.route("/live_stream")
+def live_stream():
+    """SSE endpoint — frontend subscribes to get live comments pushed in real-time."""
+    def event_stream():
+        last = 0
+        while True:
+            if len(comment_queue) > last:
+                item = comment_queue[last]
+                last += 1
+                import json as _json
+                yield f"data: {_json.dumps(item)}\n\n"
+            else:
+                import time
+                time.sleep(0.3)
+    return Response(stream_with_context(event_stream()),
+                    mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @app.route("/tts", methods=["POST"])

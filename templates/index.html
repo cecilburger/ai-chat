@@ -622,6 +622,13 @@
       pendingQueue.push({ text, username });
       processChatQueue();
     }
+
+    // Subscribe to live comment stream from server
+    const liveStream = new EventSource("/live_stream");
+    liveStream.onmessage = (e) => {
+      const { username, text } = JSON.parse(e.data);
+      receiveComment(username, text);
+    };
     // ────────────────────────────────────────────────────────────────────
   </script>
 </body>
