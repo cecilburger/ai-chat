@@ -322,3 +322,37 @@ TEMPLATES = {
 def generate_response(intent: str, context: str = "") -> str:
     options = TEMPLATES.get(intent, TEMPLATES["out_of_scope"])
     return random.choice(options)
+
+
+# Context hints passed to the LLM to guide responses per intent
+INTENT_CONTEXT = {
+    "greeting":             "User menyapa, balas ramah dan tanya mau snack apa.",
+    "product_list":         "User tanya daftar produk GarudaFood.",
+    "product_chocolatos":   "User tanya tentang Chocolatos.",
+    "product_kacang":       "User tanya tentang Kacang GarudaFood.",
+    "product_bengbeng":     "User tanya tentang Beng-Beng.",
+    "product_leo":          "User tanya tentang Leo Chips.",
+    "product_gery":         "User tanya tentang Gery.",
+    "product_okky":         "User tanya tentang Okky Jelly.",
+    "product_pilus":        "User tanya tentang Pilus.",
+    "variant_chocolatos":   "User tanya varian rasa Chocolatos.",
+    "variant_kacang":       "User tanya varian rasa Kacang.",
+    "variant_leo":          "User tanya varian rasa Leo Chips.",
+    "variant_pilus":        "User tanya varian rasa Pilus.",
+    "rec_sweet":            "User minta rekomendasi snack manis.",
+    "rec_savory":           "User minta rekomendasi snack gurih.",
+    "best_seller":          "User tanya produk paling laris.",
+    "price":                "User tanya harga produk.",
+    "where_buy":            "User tanya di mana beli produk.",
+    "availability":         "User tanya apakah stok tersedia.",
+    "shipping":             "User tanya soal pengiriman.",
+    "size":                 "User tanya ukuran atau isi kemasan.",
+    "for_kids":             "User tanya apakah cocok untuk anak-anak.",
+    "spicy_check":          "User tanya apakah produk pedas atau tidak.",
+    "halal":                "User tanya soal sertifikasi halal.",
+    "nutrition":            "User tanya informasi gizi atau kalori.",
+    "expired":              "User tanya soal tanggal kadaluarsa atau ketahanan produk.",
+    "checkout":             "User mau beli atau checkout, dorong untuk segera order.",
+    "thanks":               "User mengucapkan terima kasih.",
+    "out_of_scope":         "User tanya produk di luar GarudaFood, tolak dengan ramah dan tawarkan snack GarudaFood.",
+}
