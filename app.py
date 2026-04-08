@@ -99,29 +99,33 @@ def tts():
     if not text:
         return "", 400
 
-    audio = eleven_client.text_to_speech.convert(
-        voice_id=ELEVENLABS_VOICE_ID,
-        text=text,
-        model_id="eleven_multilingual_v2",
-        output_format="mp3_44100_128",
-        voice_settings={
-            "stability": 0.35,        # lower = more expressive/varied
-            "similarity_boost": 0.75,
-            "style": 0.60,            # higher = more energetic/emotional
-            "use_speaker_boost": True,
-        },
-    )
+    try:
+        audio = eleven_client.text_to_speech.convert(
+            voice_id=ELEVENLABS_VOICE_ID,
+            text=text,
+            model_id="eleven_multilingual_v2",
+            output_format="mp3_44100_128",
+            voice_settings={
+                "stability": 0.35,
+                "similarity_boost": 0.75,
+                "style": 0.60,
+                "use_speaker_boost": True,
+            },
+        )
 
-    def generate():
-        for chunk in audio:
-            if chunk:
-                yield chunk
+        def generate():
+            for chunk in audio:
+                if chunk:
+                    yield chunk
 
-    return Response(
-        stream_with_context(generate()),
-        mimetype="audio/mpeg",
-        headers={"Cache-Control": "no-cache"},
-    )
+        return Response(
+            stream_with_context(generate()),
+            mimetype="audio/mpeg",
+            headers={"Cache-Control": "no-cache"},
+        )
+    except Exception as e:
+        print(f"[TTS ERROR] {e}")
+        return str(e), 500
 
 
 if __name__ == "__main__":

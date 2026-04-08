@@ -5,130 +5,281 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Garuda Food Chatbot</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f5f5f0;
+      font-family: 'Inter', sans-serif;
+      background: #0a0a0f;
       height: 100vh;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-    }
-
-    .chat-container {
-      width: 100%;
-      max-width: 720px;
-      height: 90vh;
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.12);
-      display: flex;
-      flex-direction: column;
       overflow: hidden;
     }
 
+    /* Animated background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(214, 43, 39, 0.15) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(255, 100, 0, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 60% 80%, rgba(214, 43, 39, 0.08) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .chat-container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 480px;
+      height: 100vh;
+      max-height: 860px;
+      background: rgba(15, 15, 20, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 0 60px rgba(214, 43, 39, 0.2), 0 0 120px rgba(0,0,0,0.8);
+    }
+
+    /* Header */
     .chat-header {
-      background: #d62b27;
-      color: white;
       padding: 16px 20px;
+      background: rgba(20, 20, 28, 0.9);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
       display: flex;
       align-items: center;
       gap: 12px;
+      backdrop-filter: blur(10px);
     }
 
-    .chat-header .logo {
-      width: 40px;
-      height: 40px;
-      background: white;
-      border-radius: 50%;
+    .logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #d62b27, #ff6b35);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: bold;
-      color: #d62b27;
+      font-weight: 700;
+      color: white;
       font-size: 18px;
       flex-shrink: 0;
+      box-shadow: 0 0 16px rgba(214, 43, 39, 0.5);
     }
 
-    .chat-header h1 {
-      font-size: 18px;
+    .header-info { flex: 1; }
+
+    .header-info h1 {
+      font-size: 15px;
       font-weight: 600;
+      color: #fff;
+      letter-spacing: 0.2px;
     }
 
-    .chat-header p {
-      font-size: 13px;
-      opacity: 0.85;
+    .header-info .status {
+      font-size: 11px;
+      color: #4ade80;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 2px;
     }
 
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      background: #4ade80;
+      border-radius: 50%;
+      animation: pulse-green 2s infinite;
+    }
+
+    @keyframes pulse-green {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .live-badge {
+      background: linear-gradient(135deg, #d62b27, #ff4444);
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 20px;
+      letter-spacing: 1px;
+      animation: pulse-red 1.5s infinite;
+      box-shadow: 0 0 10px rgba(214, 43, 39, 0.6);
+    }
+
+    @keyframes pulse-red {
+      0%, 100% { box-shadow: 0 0 10px rgba(214, 43, 39, 0.6); }
+      50% { box-shadow: 0 0 20px rgba(214, 43, 39, 0.9); }
+    }
+
+    .voice-toggle {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      color: white;
+    }
+    .voice-toggle:hover { background: rgba(255,255,255,0.12); }
+    .voice-toggle.muted { opacity: 0.35; }
+
+    /* Messages */
     .messages {
       flex: 1;
       overflow-y: auto;
-      padding: 20px;
+      padding: 20px 16px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.1) transparent;
     }
 
+    .messages::-webkit-scrollbar { width: 4px; }
+    .messages::-webkit-scrollbar-track { background: transparent; }
+    .messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+    /* Welcome */
+    .welcome {
+      text-align: center;
+      padding: 24px 16px 8px;
+    }
+
+    .welcome-emoji {
+      font-size: 40px;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .welcome h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .welcome p {
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 16px;
+    }
+
+    .suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .suggestion-btn {
+      background: rgba(214, 43, 39, 0.12);
+      border: 1px solid rgba(214, 43, 39, 0.3);
+      color: rgba(255,255,255,0.8);
+      padding: 7px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .suggestion-btn:hover {
+      background: rgba(214, 43, 39, 0.3);
+      border-color: rgba(214, 43, 39, 0.6);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    /* Messages */
     .message {
       display: flex;
-      align-items: flex-start;
-      gap: 10px;
+      align-items: flex-end;
+      gap: 8px;
+      animation: fadeUp 0.25s ease;
     }
 
-    .message.user {
-      flex-direction: row-reverse;
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
+
+    .message.user { flex-direction: row-reverse; }
 
     .avatar {
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      border-radius: 10px;
       flex-shrink: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 14px;
-      font-weight: bold;
+      font-size: 12px;
+      font-weight: 700;
       color: white;
     }
 
-    .message.bot .avatar { background: #d62b27; }
-    .message.user .avatar { background: #555; }
+    .message.bot .avatar {
+      background: linear-gradient(135deg, #d62b27, #ff6b35);
+      box-shadow: 0 0 10px rgba(214, 43, 39, 0.4);
+    }
+
+    .message.user .avatar {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+    }
 
     .bubble {
-      max-width: 75%;
-      padding: 12px 16px;
+      max-width: 78%;
+      padding: 10px 14px;
       border-radius: 16px;
-      font-size: 14px;
+      font-size: 13.5px;
       line-height: 1.6;
       white-space: pre-wrap;
       word-break: break-word;
     }
 
     .message.bot .bubble {
-      background: #f0f0ed;
-      border-top-left-radius: 4px;
-      color: #222;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.9);
+      border-bottom-left-radius: 4px;
     }
 
     .message.user .bubble {
-      background: #d62b27;
+      background: linear-gradient(135deg, #d62b27, #e83a36);
       color: white;
-      border-top-right-radius: 4px;
+      border-bottom-right-radius: 4px;
+      box-shadow: 0 4px 16px rgba(214, 43, 39, 0.35);
     }
 
+    /* Typing */
     .typing-indicator {
       display: flex;
       gap: 4px;
-      padding: 4px 0;
+      padding: 2px 0;
+      align-items: center;
     }
 
     .typing-indicator span {
-      width: 8px;
-      height: 8px;
-      background: #aaa;
+      width: 7px;
+      height: 7px;
+      background: rgba(255,255,255,0.4);
       border-radius: 50%;
       animation: bounce 1.2s infinite;
     }
@@ -138,137 +289,121 @@
 
     @keyframes bounce {
       0%, 60%, 100% { transform: translateY(0); }
-      30% { transform: translateY(-6px); }
+      30% { transform: translateY(-5px); }
     }
 
+    /* Input */
     .input-area {
-      padding: 16px 20px;
-      border-top: 1px solid #eee;
+      padding: 12px 16px 16px;
+      background: rgba(20, 20, 28, 0.9);
+      border-top: 1px solid rgba(255,255,255,0.06);
       display: flex;
       gap: 10px;
-      background: #fff;
+      align-items: flex-end;
+      backdrop-filter: blur(10px);
     }
 
-    .input-area textarea {
+    .input-wrap {
       flex: 1;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      display: flex;
+      align-items: flex-end;
       padding: 10px 14px;
-      border: 1px solid #ddd;
-      border-radius: 24px;
-      font-size: 14px;
-      font-family: inherit;
-      resize: none;
-      outline: none;
-      line-height: 1.5;
-      max-height: 120px;
       transition: border-color 0.2s;
     }
 
-    .input-area textarea:focus {
-      border-color: #d62b27;
+    .input-wrap:focus-within {
+      border-color: rgba(214, 43, 39, 0.5);
+      box-shadow: 0 0 0 3px rgba(214, 43, 39, 0.08);
     }
 
-    .input-area button {
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      background: #d62b27;
+    .input-wrap textarea {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-size: 14px;
+      font-family: inherit;
+      resize: none;
+      line-height: 1.5;
+      max-height: 100px;
+    }
+
+    .input-wrap textarea::placeholder { color: rgba(255,255,255,0.25); }
+
+    .send-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #d62b27, #ff4444);
       border: none;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      transition: background 0.2s;
-      align-self: flex-end;
-    }
-
-    .input-area button:hover { background: #b52220; }
-    .input-area button:disabled { background: #ccc; cursor: not-allowed; }
-
-    .input-area button svg {
-      width: 20px;
-      height: 20px;
-      fill: white;
-    }
-
-    .welcome {
-      text-align: center;
-      color: #888;
-      font-size: 13px;
-      padding: 10px 0 4px;
-    }
-
-    .suggestions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center;
-      margin-top: 8px;
-    }
-
-    .suggestion-btn {
-      background: none;
-      border: 1px solid #d62b27;
-      color: #d62b27;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      cursor: pointer;
       transition: all 0.2s;
+      box-shadow: 0 4px 14px rgba(214, 43, 39, 0.4);
     }
 
-    .suggestion-btn:hover {
-      background: #d62b27;
-      color: white;
+    .send-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(214, 43, 39, 0.55);
     }
 
-    .voice-toggle {
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 4px 8px;
-      border-radius: 20px;
-      font-size: 18px;
-      opacity: 0.8;
-      transition: opacity 0.2s;
-      margin-left: auto;
+    .send-btn:disabled {
+      background: rgba(255,255,255,0.08);
+      box-shadow: none;
+      cursor: not-allowed;
+      transform: none;
     }
-    .voice-toggle:hover { opacity: 1; }
-    .voice-toggle.muted { opacity: 0.35; }
+
+    .send-btn svg { width: 18px; height: 18px; fill: white; }
   </style>
 </head>
 <body>
   <div class="chat-container">
     <div class="chat-header">
       <div class="logo">G</div>
-      <div>
+      <div class="header-info">
         <h1>Garuda Food Assistant</h1>
-        <p>Ask me anything about our snack products!</p>
+        <div class="status">
+          <span class="status-dot"></span>
+          Online sekarang
+        </div>
       </div>
+      <span class="live-badge">LIVE</span>
       <button class="voice-toggle" id="voiceBtn" onclick="toggleVoice()" title="Toggle voice">🔊</button>
     </div>
 
     <div class="messages" id="messages">
       <div class="welcome">
-        Welcome! I'm your Garuda Food snack guide. 🥜🍫
+        <span class="welcome-emoji">🥜🍫</span>
+        <h2>Halo! Selamat datang</h2>
+        <p>Tanya apa aja soal snack GarudaFood ya!</p>
         <div class="suggestions">
-          <button class="suggestion-btn" onclick="sendSuggestion(this)">What snacks do you have?</button>
-          <button class="suggestion-btn" onclick="sendSuggestion(this)">Tell me about Kacang Garuda</button>
-          <button class="suggestion-btn" onclick="sendSuggestion(this)">What's in Chocolatos?</button>
-          <button class="suggestion-btn" onclick="sendSuggestion(this)">Recommend a sweet snack</button>
+          <button class="suggestion-btn" onclick="sendSuggestion(this)">Snack apa aja?</button>
+          <button class="suggestion-btn" onclick="sendSuggestion(this)">Kacang Garuda</button>
+          <button class="suggestion-btn" onclick="sendSuggestion(this)">Chocolatos rasa apa?</button>
+          <button class="suggestion-btn" onclick="sendSuggestion(this)">Rekomendasi manis</button>
         </div>
       </div>
     </div>
 
     <div class="input-area">
-      <textarea
-        id="userInput"
-        placeholder="Ask about Garuda Food products..."
-        rows="1"
-        onkeydown="handleKeyDown(event)"
-        oninput="autoResize(this)"
-      ></textarea>
-      <button id="sendBtn" onclick="sendMessage()">
+      <div class="input-wrap">
+        <textarea
+          id="userInput"
+          placeholder="Tanya soal snack GarudaFood..."
+          rows="1"
+          onkeydown="handleKeyDown(event)"
+          oninput="autoResize(this)"
+        ></textarea>
+      </div>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">
         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
       </button>
     </div>
@@ -307,15 +442,16 @@
       } catch (_) {}
     }
     // ────────────────────────────────────────────────────────────────────
+
     const messagesEl = document.getElementById("messages");
-    const inputEl = document.getElementById("userInput");
-    const sendBtn = document.getElementById("sendBtn");
+    const inputEl    = document.getElementById("userInput");
+    const sendBtn    = document.getElementById("sendBtn");
     let conversationHistory = [];
     let isStreaming = false;
 
     function autoResize(el) {
       el.style.height = "auto";
-      el.style.height = Math.min(el.scrollHeight, 120) + "px";
+      el.style.height = Math.min(el.scrollHeight, 100) + "px";
     }
 
     function handleKeyDown(e) {
@@ -435,7 +571,7 @@
         }
       } catch (err) {
         removeTyping();
-        appendMessage("bot", "Sorry, something went wrong. Please try again.");
+        appendMessage("bot", "Maaf kak, ada gangguan. Coba lagi ya! 😊");
         conversationHistory.pop();
       } finally {
         isStreaming = false;
