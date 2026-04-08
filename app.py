@@ -1,14 +1,19 @@
 import json
 import os
+import re
 from flask import Flask, render_template, request, Response, stream_with_context
 from groq import Groq
+from elevenlabs.client import ElevenLabs
 from dotenv import load_dotenv
 from templates import detect_intent, INTENT_CONTEXT
 
 load_dotenv()
 
 app = Flask(__name__)
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+eleven_client = ElevenLabs(api_key=os.environ.get("ELEVENLABS_API_KEY"))
+
+ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "EXAVITQu4vr4xnSDxMaL")
 
 SYSTEM_PROMPT = """Kamu adalah asisten penjual snack GarudaFood di TikTok Live. Gaya kamu: kasual, friendly, singkat (maks 3 kalimat), pakai emoji secukupnya, selalu arahkan ke produk GarudaFood.
 
@@ -32,13 +37,12 @@ Aturan:
 - Selalu akhiri dengan pertanyaan balik atau ajakan checkout."""
 
 
-def stream_text(text: str):
-    yield f"data: {json.dumps({'text': text})}\n\n"
-    yield "data: [DONE]\n\n"
+def strip_emoji(text: str) -> str:
+    return re.sub(r'[^\x00-\x7F\u00C0-\u024F\u0400-\u04FF\u0600-\u06FF\u3040-\u30FF\u4E00-\u9FFF\s]', '', text).strip()
 
 
 def stream_groq(messages):
-    completion = client.chat.completions.create(
+    completion = groq_client.chat.completions.create(
         model="llama-3.1-8b-instant",
         messages=messages,
         max_tokens=150,
@@ -69,8 +73,6 @@ def chat():
             break
 
     intent = detect_intent(last_user_message)
-
-    # Build context hint for the LLM based on detected intent
     context_hint = INTENT_CONTEXT.get(intent, "")
     system = SYSTEM_PROMPT
     if context_hint:
@@ -86,6 +88,32 @@ def chat():
         stream_with_context(stream_groq(groq_messages)),
         mimetype="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.route("/tts", methods=["POST"])
+def tts():
+    data = request.get_json()
+    text = strip_emoji(data.get("text", ""))
+    if not text:
+        return "", 400
+
+    audio = eleven_client.text_to_speech.convert(
+        voice_id=ELEVENLABS_VOICE_ID,
+        text=text,
+        model_id="eleven_multilingual_v2",
+        output_format="mp3_44100_128",
+    )
+
+    def generate():
+        for chunk in audio:
+            if chunk:
+                yield chunk
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="audio/mpeg",
+        headers={"Cache-Control": "no-cache"},
     )
 
 
