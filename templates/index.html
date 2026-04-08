@@ -413,6 +413,8 @@
     // ── Voice (ElevenLabs TTS) ───────────────────────────────────────────
     let voiceEnabled = true;
     let currentAudio = null;
+    let isSpeaking = false;
+    const messageQueue = []; // { username, question, answer }
 
     function toggleVoice() {
       voiceEnabled = !voiceEnabled;
@@ -422,24 +424,53 @@
       if (!voiceEnabled && currentAudio) {
         currentAudio.pause();
         currentAudio = null;
+        isSpeaking = false;
       }
     }
 
-    async function speak(text) {
+    // Fetch TTS audio and return a promise that resolves when audio finishes
+    function fetchAndPlay(text) {
+      return new Promise(async (resolve) => {
+        if (!voiceEnabled) return resolve();
+        try {
+          const res = await fetch("/tts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text }),
+          });
+          if (!res.ok) return resolve();
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          if (currentAudio) currentAudio.pause();
+          currentAudio = new Audio(url);
+          currentAudio.onended = resolve;
+          currentAudio.onerror = resolve;
+          currentAudio.play();
+        } catch (_) { resolve(); }
+      });
+    }
+
+    // Process queue one at a time — read comment first, then answer
+    async function processQueue() {
+      if (isSpeaking || messageQueue.length === 0) return;
+      isSpeaking = true;
+      const { username, question, answer } = messageQueue.shift();
+
+      // 1. Read the comment aloud: "[username] nanya: [question]"
+      const readComment = `${username} nanya: ${question}`;
+      await fetchAndPlay(readComment);
+
+      // 2. Then read the answer
+      await fetchAndPlay(answer);
+
+      isSpeaking = false;
+      processQueue(); // next in queue
+    }
+
+    function enqueueSpeak(username, question, answer) {
       if (!voiceEnabled) return;
-      try {
-        const res = await fetch("/tts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text }),
-        });
-        if (!res.ok) return;
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        if (currentAudio) currentAudio.pause();
-        currentAudio = new Audio(url);
-        currentAudio.play();
-      } catch (_) {}
+      messageQueue.push({ username, question, answer });
+      processQueue();
     }
     // ────────────────────────────────────────────────────────────────────
 
@@ -448,6 +479,8 @@
     const sendBtn    = document.getElementById("sendBtn");
     let conversationHistory = [];
     let isStreaming = false;
+    let pendingQueue = []; // queue of {text, username} waiting to be processed
+    let isProcessingChat = false;
 
     function autoResize(el) {
       el.style.height = "auto";
@@ -470,12 +503,12 @@
       messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
-    function appendMessage(role, text) {
+    function appendMessage(role, text, username) {
       const div = document.createElement("div");
       div.className = `message ${role}`;
-      const initial = role === "bot" ? "G" : "U";
+      const label = role === "bot" ? "G" : (username ? username[0].toUpperCase() : "U");
       div.innerHTML = `
-        <div class="avatar">${initial}</div>
+        <div class="avatar">${label}</div>
         <div class="bubble">${escapeHtml(text)}</div>
       `;
       messagesEl.appendChild(div);
@@ -512,17 +545,24 @@
         .replace(/"/g, "&quot;");
     }
 
-    async function sendMessage() {
+    function sendMessage() {
       const text = inputEl.value.trim();
-      if (!text || isStreaming) return;
-
-      isStreaming = true;
-      sendBtn.disabled = true;
+      if (!text) return;
       inputEl.value = "";
       inputEl.style.height = "auto";
+      // Use "Kak" as default username for manual input
+      pendingQueue.push({ text, username: "Kak" });
+      processChatQueue();
+    }
+
+    async function processChatQueue() {
+      if (isProcessingChat || pendingQueue.length === 0) return;
+      isProcessingChat = true;
+
+      const { text, username } = pendingQueue.shift();
 
       conversationHistory.push({ role: "user", content: text });
-      appendMessage("user", text);
+      appendMessage("user", text, username);
       showTyping();
 
       let botBubble = null;
@@ -541,15 +581,11 @@
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-
           const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n");
-
-          for (const line of lines) {
+          for (const line of chunk.split("\n")) {
             if (!line.startsWith("data: ")) continue;
             const raw = line.slice(6).trim();
             if (raw === "[DONE]") break;
-
             try {
               const { text: delta } = JSON.parse(raw);
               if (delta) {
@@ -567,18 +603,26 @@
 
         if (botText) {
           conversationHistory.push({ role: "assistant", content: botText });
-          speak(botText);
+          // Enqueue voice: read comment first, then answer
+          enqueueSpeak(username, text, botText);
         }
       } catch (err) {
         removeTyping();
         appendMessage("bot", "Maaf kak, ada gangguan. Coba lagi ya! 😊");
         conversationHistory.pop();
       } finally {
-        isStreaming = false;
-        sendBtn.disabled = false;
-        inputEl.focus();
+        isProcessingChat = false;
+        processChatQueue(); // process next in queue
       }
     }
+    // ── TikTok Live integration hook ─────────────────────────────────────
+    // Call this from external TikTok Live connector:
+    // receiveComment("username123", "chocolatos ada rasa apa?")
+    function receiveComment(username, text) {
+      pendingQueue.push({ text, username });
+      processChatQueue();
+    }
+    // ────────────────────────────────────────────────────────────────────
   </script>
 </body>
 </html>
