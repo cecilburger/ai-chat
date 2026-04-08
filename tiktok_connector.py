@@ -34,15 +34,23 @@ async def on_disconnect(event: DisconnectEvent):
 
 @client.on(CommentEvent)
 async def on_comment(event: CommentEvent):
-    username = event.user.nickname or event.user.unique_id
-    comment = event.comment.strip()
+    # Access raw user info to avoid ExtendedUser bug with 'nickName' field
+    try:
+        user_info = event.user_info
+        username = (
+            getattr(user_info, "nick_name", None) or
+            getattr(user_info, "unique_id", None) or
+            "Kak"
+        )
+    except Exception:
+        username = "Kak"
 
+    comment = event.comment.strip()
     if not comment:
         return
 
     print(f"[{username}]: {comment}")
 
-    # Forward to chatbot
     try:
         async with aiohttp.ClientSession() as session:
             await session.post(CHATBOT_URL, json={
